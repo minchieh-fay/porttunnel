@@ -17,6 +17,7 @@ type ControlMessage struct {
 const (
 	MessageTypeRegisterMappings = "register_mappings"
 	MessageTypeForwardData      = "forward_data"
+	MessageTypeHeartbeat        = "heartbeat"
 )
 
 // RegisterMappingsPayload 注册端口映射的消息载荷
@@ -27,4 +28,9 @@ type RegisterMappingsPayload struct {
 // ForwardDataPayload 转发数据的消息载荷
 type ForwardDataPayload struct {
 	Mapping PortMappingConfig // 转发的信息
+}
+
+// HeartbeatPayload 心跳消息载荷
+type HeartbeatPayload struct {
+	Timestamp int64 // 心跳时间戳
 }

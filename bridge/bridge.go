@@ -73,11 +73,8 @@ func (b *Bridge) Start(proxyAddr string, portMappings []help.PortMappingConfig) 
 	// 在后台接受数据流
 	go b.acceptDataStreams()
 
-	// // 启动心跳发送
-	// go b.sendHeartbeats()
-
-	// // 启动心跳超时检测
-	// go b.checkHeartbeatTimeout()
+	// 启动心跳发送
+	go b.sendHeartbeats()
 
 	return nil
 }
@@ -96,21 +93,50 @@ func (b *Bridge) acceptDataStreams() {
 }
 
 func (b *Bridge) handleDataStream(stream quic.Stream) {
-	log.Printf("接受数据流: %d", stream.StreamID())
+	log.Printf("Bridge 接受数据流: %d", stream.StreamID())
 
 	// 读取ForwardDataPayload
-	var payload help.ForwardDataPayload
+	var msg help.ControlMessage
 	decoder := json.NewDecoder(stream)
-	if err := decoder.Decode(&payload); err != nil {
-		log.Printf("读取ForwardDataPayload失败: %w", err)
+	if err := decoder.Decode(&msg); err != nil {
+		log.Printf("Bridge 读取ControlMessage失败: %w", err)
+		stream.Close()
 		return
 	}
 
-	log.Printf("读取ForwardDataPayload成功: %v", payload)
+	if msg.Type != help.MessageTypeForwardData {
+		log.Printf("Bridge 预期收到ForwardDataPayload，实际收到: %s", msg.Type)
+		stream.Close()
+		return
+	}
+	// 读取ForwardDataPayload
+	// 从msg.Payload中读取ForwardDataPayload
+	payloadJSON, err := json.Marshal(msg.Payload)
+	if err != nil {
+		log.Printf("Bridge 序列化payload失败: %w", err)
+		stream.Close()
+		return
+	}
+	var payload help.ForwardDataPayload
+	if err := json.Unmarshal(payloadJSON, &payload); err != nil {
+		log.Printf("Bridge 读取ForwardDataPayload失败: %w", err)
+		stream.Close()
+		return
+	}
+
+	log.Printf("Bridge 读取ForwardDataPayload成功: %v", payload)
 
 	// 根据payload.Protocol选择处理方式
 	switch payload.Mapping.Protocol {
 	case "tcp":
 		b.handleTCPStream(stream, &payload.Mapping)
+	case "udp":
+		log.Printf("Bridge UDP代理暂未实现")
+		stream.Close()
+		return
+	default:
+		log.Printf("Bridge 未知协议: %s", payload.Mapping.Protocol)
+		stream.Close()
+		return
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"porttunnel/help"
 	"porttunnel/proxy/tcpproxymanager"
+	"time"
 
 	"github.com/quic-go/quic-go"
 )
@@ -115,5 +116,25 @@ func (p *Proxy) handleConnection(conn quic.Connection) {
 
 		log.Printf("未知协议: %s", mapping.Protocol)
 		continue
+	}
+
+	errcount := 0
+	// 不停的读取 控制通道的数据
+	for {
+		msg := help.ControlMessage{}
+		decoder := json.NewDecoder(stream)
+		if err := decoder.Decode(&msg); err != nil {
+			log.Printf("读取控制消息失败: %v", err)
+			errcount++
+			if errcount > 10 {
+				log.Printf("读取控制消息失败次数过多，关闭连接")
+				conn.CloseWithError(1, "读取控制消息失败次数过多")
+				return
+			}
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		time.Sleep(3 * time.Second)
 	}
 }
