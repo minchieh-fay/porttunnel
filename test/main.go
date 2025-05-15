@@ -3,10 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"porttunnel/bridge"
-	"porttunnel/help"
 	"porttunnel/proxy"
 	"runtime"
 	"strconv"
@@ -14,10 +12,17 @@ import (
 	"time"
 )
 
+type PortMappingConfig struct {
+	Protocol     string
+	ServerPort   int
+	ResourceAddr string
+	ResourcePort int
+}
+
 var (
 	TunPort      int
 	ProxyAddr    string
-	PortMappings []help.PortMappingConfig
+	PortMappings []PortMappingConfig
 )
 
 func init() {
@@ -38,7 +43,7 @@ func init() {
 		// 字符串转整数
 		serverPort, _ := strconv.Atoi(parts[1])
 		resourcePort, _ := strconv.Atoi(parts[3])
-		PortMappings = append(PortMappings, help.PortMappingConfig{
+		PortMappings = append(PortMappings, PortMappingConfig{
 			Protocol:     parts[0],
 			ServerPort:   serverPort,
 			ResourceAddr: parts[2],
@@ -47,29 +52,14 @@ func init() {
 	}
 }
 
-func test() {
-	ProxyAddr = "localhost:5566"
-	PortMappings = []help.PortMappingConfig{
-		{
-			Protocol:     "tcp",
-			ServerPort:   5500,
-			ResourceAddr: "10.35.146.7",
-			ResourcePort: 11002,
-		},
-	}
-}
 func main() {
-	log.Println("tunproxy开始启动")
 	// 设置单线程
 	runtime.GOMAXPROCS(1)
 	flag.Parse()
-	test()
 	proxy := proxy.NewProxy()
 	proxy.Start(TunPort)
 	if ProxyAddr != "" {
-		log.Println("tunproxy开始启动bridge")
 		bridge := bridge.NewBridge()
 		bridge.Start(ProxyAddr, PortMappings)
 	}
-	select {}
 }
