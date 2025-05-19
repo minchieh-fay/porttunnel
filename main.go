@@ -109,5 +109,7 @@ func main() {
 		return
 	}
 
-	select {}
+	for {
+		time.Sleep(time.Second * 1)
+	}
 }
