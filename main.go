@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -21,8 +20,22 @@ var (
 )
 
 func init() {
-	flag.IntVar(&TunPort, "TUNPORT", 5566, "隧道数据端口")
-	flag.StringVar(&ProxyAddr, "SERVER", "", "上层服务proxy的地址")
+	// 从环境变量读取TUNPORT
+	if envPort := os.Getenv("TUNPORT"); envPort != "" {
+		if port, err := strconv.Atoi(envPort); err == nil {
+			TunPort = port
+		} else {
+			log.Printf("环境变量TUNPORT格式错误: %v", err)
+		}
+	} else {
+		TunPort = 5566 // 默认值
+	}
+
+	// 从环境变量读取SERVER
+	if envServer := os.Getenv("SERVER"); envServer != "" {
+		ProxyAddr = envServer
+	}
+
 	// 从环境变量中读取PORT1，PORT2，PORT3，...， 直到读取为空/失败 停止
 	for i := 1; ; i++ {
 		envPort := os.Getenv(fmt.Sprintf("PORT%d", i))
@@ -58,12 +71,26 @@ func test() {
 		},
 	}
 }
+
 func main() {
 	log.Println("tunproxy开始启动")
 	// 设置单线程
 	runtime.GOMAXPROCS(1)
-	flag.Parse()
-	//test()
+
+	// 打印当前配置
+	log.Printf("当前配置：TUNPORT=%d, SERVER=%s", TunPort, ProxyAddr)
+	if len(PortMappings) > 0 {
+		log.Printf("端口映射数量：%d", len(PortMappings))
+		for i, mapping := range PortMappings {
+			log.Printf("映射 %d: %s:%d -> %s:%d",
+				i+1,
+				mapping.Protocol,
+				mapping.ServerPort,
+				mapping.ResourceAddr,
+				mapping.ResourcePort)
+		}
+	}
+
 	proxy := proxy.NewProxy()
 	proxy.Start(TunPort)
 	if ProxyAddr != "" {
