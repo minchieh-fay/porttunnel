@@ -28,7 +28,7 @@ func init() {
 			log.Printf("环境变量TUNPORT格式错误: %v", err)
 		}
 	} else {
-		TunPort = 5566 // 默认值
+		TunPort = 0 // 默认值
 	}
 
 	// 从环境变量读取SERVER
@@ -91,12 +91,23 @@ func main() {
 		}
 	}
 
-	proxy := proxy.NewProxy()
-	proxy.Start(TunPort)
+	if TunPort != 0 {
+		proxy := proxy.NewProxy()
+		proxy.Start(TunPort)
+	}
+
 	if ProxyAddr != "" {
 		log.Println("tunproxy开始启动bridge")
 		bridge := bridge.NewBridge()
 		bridge.Start(ProxyAddr, PortMappings)
 	}
+
+	// 2个环境变量都没有设置，直接退出
+	if TunPort == 0 && ProxyAddr == "" {
+		log.Println("TUNPORT和SERVER都没有设置，程序3秒后退出")
+		time.Sleep(time.Second * 3)
+		return
+	}
+
 	select {}
 }
