@@ -32,6 +32,7 @@ func (p *Proxy) Start(port int) error {
 	quicConfig := &quic.Config{}
 
 	log.Printf("Proxy: 开始启动QUIC监听器于端口: %d", port)
+	log.Printf("端口使用的是udp协议，做端口映射的时候请注意")
 	// 启动QUIC监听器
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	var err error

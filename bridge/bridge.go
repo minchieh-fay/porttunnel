@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"porttunnel/help"
 	"time"
 
@@ -34,11 +35,21 @@ func (b *Bridge) Start(proxyAddr string, portMappings []help.PortMappingConfig) 
 	// QUIC配置
 	quicConfig := &quic.Config{}
 	log.Println("开始连接到Proxy: %s", proxyAddr)
+
+	connected := false
+	go func() {
+		time.Sleep(time.Second * 10)
+		if !connected {
+			log.Println("连接Proxy超时，程序退出")
+			os.Exit(1)
+		}
+	}()
 	// 连接到Proxy
 	conn, err := quic.DialAddr(context.Background(), proxyAddr, tlsConfig, quicConfig)
 	if err != nil {
 		return fmt.Errorf("连接Proxy失败: %w", err)
 	}
+	connected = true
 
 	b.connection = conn
 	log.Printf("已连接到Proxy: %s", proxyAddr)
@@ -62,10 +73,16 @@ func (b *Bridge) Start(proxyAddr string, portMappings []help.PortMappingConfig) 
 	encoder := json.NewEncoder(b.controlStream)
 	if err := encoder.Encode(msg); err != nil {
 		conn.CloseWithError(1, "发送注册消息失败")
-		return fmt.Errorf("发送注册消息失败: %w", err)
+		log.Println("发送注册消息失败，程序3秒后退出")
+		time.Sleep(time.Second * 10)
+		os.Exit(1)
 	}
 
 	log.Printf("已发送端口映射注册消息，映射数量: %d", len(portMappings))
+	// 打印注册的端口信息
+	for _, mapping := range portMappings {
+		log.Printf("注册的端口信息: %s:%d -> %s:%d", mapping.Protocol, mapping.ServerPort, mapping.ResourceAddr, mapping.ResourcePort)
+	}
 
 	// // 在后台处理控制流消息
 	// go b.handleControlMessages()
@@ -80,14 +97,20 @@ func (b *Bridge) Start(proxyAddr string, portMappings []help.PortMappingConfig) 
 }
 
 func (b *Bridge) acceptDataStreams() {
+	errcount := 0
 	for {
 		stream, err := b.connection.AcceptStream(context.Background())
 		if err != nil {
-			log.Printf("bridge 接受数据流失败: %w", err)
+			log.Printf("bridge 接受数据流失败: %w, errcount: %d", err, errcount)
+			errcount++
+			if errcount > 10 {
+				log.Println("接受数据流失败次数过多，程序退出")
+				os.Exit(1)
+			}
 			time.Sleep(1 * time.Second)
 			continue
 		}
-
+		errcount = 0
 		go b.handleDataStream(stream)
 	}
 }
