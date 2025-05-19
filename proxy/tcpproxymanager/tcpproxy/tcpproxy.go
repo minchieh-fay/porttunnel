@@ -43,9 +43,10 @@ func (p *TCPProxy) Push(conn quic.Connection, config *help.PortMappingConfig) er
 
 func (p *TCPProxy) Start() error {
 	// 创建listener
+	log.Printf("TCPProxy 创建tcp listener, 端口: %d", p.port)
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", p.port))
 	if err != nil {
-		log.Printf("在端口%d创建tcp listener失败: %v", p.port, err)
+		log.Printf("TCPProxy 在端口%d创建tcp listener失败: %v", p.port, err)
 		return err
 	}
 	p.listener = &listener
