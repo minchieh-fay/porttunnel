@@ -63,7 +63,7 @@ func main() {
 	// 设置单线程
 	runtime.GOMAXPROCS(1)
 	flag.Parse()
-	test()
+	//test()
 	proxy := proxy.NewProxy()
 	proxy.Start(TunPort)
 	if ProxyAddr != "" {
